@@ -1,16 +1,22 @@
-# Isso – a commenting server similar to Disqus
+# Publish Isso
 
-Isso – *Ich schrei sonst* – is a lightweight commenting server written in
-Python and JavaScript. It aims to be a drop-in replacement for
-[Disqus](http://disqus.com).
+Update from upstream:
 
-![Isso in Action](http://posativ.org/~tmp/isso-sample.png)
+```
+git remote add upstream https://github.com/posativ/isso.git
+git fetch upstream
+git merge upstrea/master
+```
 
-See [posativ.org/isso](http://posativ.org/isso/) for more details.
+Build and publish Docker image:
 
-## License
-MIT, see [LICENSE](LICENSE).
+```
+docker build . -t alexelcu/isso:latest
+docker push alexelcu/isso:latest
 
-## Development
-Refer to the docs for
-[Installing from Source](https://posativ.org/isso/docs/install/#install-from-source).
+export ISSO_VERSION="v$(date +"%Y-%m-%d")"
+docker tag alexelcu/isso:latest "alexelcu/isso:$ISSO_VERSION"
+docker push "alexelcu/isso:$ISSO_VERSION"
+```
+
+Link: <https://hub.docker.com/repository/docker/alexelcu/isso>
