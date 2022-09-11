@@ -1,13 +1,10 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import unicode_literals
-
 import sys
 import os
 import logging
 
 from glob import glob
-import pkg_resources
 
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.wrappers import Response
@@ -26,12 +23,12 @@ class Dispatcher(DispatcherMiddleware):
     def __init__(self, *confs):
         self.isso = {}
 
-        default = pkg_resources.resource_filename('isso', 'defaults.ini')
+        default = config.default_file()
         for i, path in enumerate(confs):
             conf = config.load(default, path)
 
             if not conf.get("general", "name"):
-                logger.warn("unable to dispatch %r, no 'name' set", confs[i])
+                logger.warning("unable to dispatch %r, no 'name' set", confs[i])
                 continue
 
             self.isso["/" + conf.get("general", "name")] = make_app(conf)

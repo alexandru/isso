@@ -1,15 +1,12 @@
-
-from __future__ import print_function, unicode_literals
-
-from itertools import chain
-
-
-from urllib.parse import unquote
+# -*- encoding: utf-8 -*-
 
 import html5lib
 
+from itertools import chain
+from urllib.parse import unquote
 
-def thread(data, default=u"Untitled.", id=None):
+
+def thread(data, default="Untitled.", id=None):
     """
     Extract <h1> title from web page. The title is *probably* the text node,
     which is the nearest H1 node in context to an element with the `isso-thread` id.

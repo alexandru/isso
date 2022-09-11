@@ -1,19 +1,16 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import unicode_literals
-
-import os
 import json
+import os
 import re
 import tempfile
 import unittest
 
-import pkg_resources
 from urllib.parse import urlencode
 
 from werkzeug.wrappers import Response
 
-from isso import Isso, core, config, dist
+from isso import Isso, core, config
 from isso.utils import http
 from isso.views import comments
 
@@ -25,8 +22,7 @@ class TestComments(unittest.TestCase):
 
     def setUp(self):
         fd, self.path = tempfile.mkstemp()
-        conf = config.load(
-            pkg_resources.resource_filename('isso', 'defaults.ini'))
+        conf = config.load(config.default_file())
         conf.set("general", "dbpath", self.path)
         conf.set("guard", "enabled", "off")
         conf.set("hash", "algorithm", "none")
@@ -115,6 +111,34 @@ class TestComments(unittest.TestCase):
 
         self.assertEqual(loads(invalid.data)["parent"], 1)
 
+    def testCreateInvalidThreadForParent(self):
+
+        self.post('/new?uri=one', data=json.dumps({'text': '...'}))
+        # Parent which is not in same thread should be rejected, set to None
+        invalid = self.post(
+            '/new?uri=two', data=json.dumps({'text': '...', 'parent': 1}))
+        # Replies to commments in thread "two" are valid
+        valid = self.post(
+            '/new?uri=two', data=json.dumps({'text': '...', 'parent': 2}))
+
+        self.assertEqual(loads(invalid.data)["parent"], None)
+        self.assertEqual(loads(valid.data)["parent"], 2)
+
+        # Insert (invalid) comment into thread "two" with parent from thread 1
+        self.app.db.execute([
+            'INSERT INTO COMMENTS (tid, parent, created, modified, mode,'
+            '   remote_addr, text, author, email, website, voters, notification)',
+            'SELECT threads.id, ?, ?, ?, ?, ?,     ?, ?, ?, ?, ?, ?',
+            'FROM threads where threads.uri = ?;'],
+            (None, 0.0, 0.0, 1, None, 'Text', None, None, None, bytes(1), None, 'two')
+        )
+        # For id=4, the parent has id=1, but is from thread "one". Because id=1
+        # does not belong to the current thread "two", it is rejected and id=4
+        # chosen instead.
+        impossible = self.post(
+            '/new?uri=two', data=json.dumps({'text': '...', 'parent': 4}))
+        self.assertEqual(loads(impossible.data)["parent"], 4)
+
     def testVerifyFields(self):
 
         def verify(comment):
@@ -169,6 +193,15 @@ class TestComments(unittest.TestCase):
         self.assertEqual(self.get('/?uri=?uri=%foo%2F').status_code, 200)
         data = loads(self.get('/?uri=?uri=%foo%2F').data)
         self.assertEqual(len(data['replies']), 0)
+
+    def testFetchEmpty(self):
+
+        empty = self.get('/?uri=%2Fempty%2F')
+        # Empty database returns 200, not 404
+        self.assertEqual(empty.status_code, 200)
+        data = loads(empty.data)
+        self.assertEqual(data['total_replies'], 0)
+        self.assertEqual(data['id'], None)
 
     def testGetLimited(self):
 
@@ -386,25 +419,29 @@ class TestComments(unittest.TestCase):
 
     def testCounts(self):
 
-        self.assertEqual(self.get('/count?uri=%2Fpath%2F').status_code, 404)
+        rv = self.post('/count', data=json.dumps(['/path/']))
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(loads(rv.data), [0])
+
         self.post('/new?uri=%2Fpath%2F', data=json.dumps({"text": "..."}))
 
-        rv = self.get('/count?uri=%2Fpath%2F')
+        rv = self.post('/count', data=json.dumps(['/path/']))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(loads(rv.data), 1)
+        self.assertEqual(loads(rv.data), [1])
 
         for x in range(3):
             self.post('/new?uri=%2Fpath%2F', data=json.dumps({"text": "..."}))
 
-        rv = self.get('/count?uri=%2Fpath%2F')
+        rv = self.post('/count', data=json.dumps(['/path/']))
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(loads(rv.data), 4)
+        self.assertEqual(loads(rv.data), [4])
 
         for x in range(4):
             self.delete('/id/%i' % (x + 1))
 
-        rv = self.get('/count?uri=%2Fpath%2F')
-        self.assertEqual(rv.status_code, 404)
+        rv = self.post('/count', data=json.dumps(['/path/']))
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(loads(rv.data), [0])
 
     def testMultipleCounts(self):
 
@@ -463,6 +500,17 @@ class TestComments(unittest.TestCase):
         self.assertEqual(
             rv["text"], '<p>This is <strong>mark</strong><em>down</em></p>')
 
+    def testTitleNull(self):
+        # Thread title set to `null` in API request
+        # Javascript `null` equals Python `None`
+        self.post('/new?uri=%2Fpath%2F',
+                  data=json.dumps({'text': 'Spam', 'title': None}))
+
+        thread = self.app.db.threads.get(1)
+        # Expect server to attempt to parse uri to extract title
+        # utils.parse cannot parse fake /path/, so default="Untitled."
+        self.assertEqual(thread.get('title'), "Untitled.")
+
     def testLatestOk(self):
         # load some comments in a mix of posts
         saved = []
@@ -510,7 +558,7 @@ class TestHostDependent(unittest.TestCase):
 
     def setUp(self):
         fd, self.path = tempfile.mkstemp()
-        conf = config.load(os.path.join(dist.location, dist.project_name, "defaults.ini"))
+        conf = config.load(config.default_file())
         conf.set("general", "dbpath", self.path)
         self.conf = conf
 
@@ -574,8 +622,7 @@ class TestModeratedComments(unittest.TestCase):
 
     def setUp(self):
         fd, self.path = tempfile.mkstemp()
-        conf = config.load(
-            pkg_resources.resource_filename('isso', 'defaults.ini'))
+        conf = config.load(config.default_file())
         conf.set("general", "dbpath", self.path)
         conf.set("moderation", "enabled", "true")
         conf.set("guard", "enabled", "off")
@@ -606,13 +653,113 @@ class TestModeratedComments(unittest.TestCase):
         self.app.db.comments.activate(1)
         self.assertEqual(self.client.get('/?uri=test').status_code, 200)
 
+    def testModerateComment(self):
+
+        id_ = 1
+        signed = self.app.sign(id_)
+
+        # Create new comment, should have mode=2 (pending moderation)
+        rv = self.client.post(
+            '/new?uri=/moderated', data=json.dumps({"text": "..."}))
+        self.assertEqual(rv.status_code, 202)
+        self.assertEqual(self.client.get('/id/1').status_code, 200)
+        self.assertEqual(self.app.db.comments.get(id_)["mode"], 2)
+        self.assertEqual(self.app.db.comments.get(id_)["text"], "...")
+
+        # GET should return some html form
+        action = "activate"
+        rv_activate_get = self.client.get('/id/%d/%s/%s' % (id_, action, signed))
+        self.assertEqual(rv_activate_get.status_code, 200)
+        self.assertIn(b"Activate: Are you sure?", rv_activate_get.data)
+        self.assertIn(b"http://invalid.local/moderated#isso-1", rv_activate_get.data)
+
+        # Activate comment
+        action = "activate"
+        rv_activated = self.client.post('/id/%d/%s/%s' % (id_, action, signed))
+        self.assertEqual(rv_activated.status_code, 200)
+        self.assertEqual(rv_activated.data, b"Comment has been activated")
+
+        # Activating should be idempotent
+        rv_activated = self.client.post('/id/%d/%s/%s' % (id_, action, signed))
+        self.assertEqual(rv_activated.status_code, 200)
+        self.assertEqual(rv_activated.data, b"Already activated")
+
+        # Comment should have mode=1 (activated)
+        self.assertEqual(self.app.db.comments.get(id_)["mode"], 1)
+
+        # Edit comment
+        action = "edit"
+        rv_edit = self.client.post('/id/%d/%s/%s' % (id_, action, signed), data=json.dumps({"text": "new text"}))
+        self.assertEqual(rv_edit.status_code, 200)
+        self.assertEqual(json.loads(rv_edit.data)["id"], id_)
+        self.assertEqual(self.app.db.comments.get(id_)["text"], "new text")
+
+        # Wrong action on comment is handled by the routing
+        action = "foo"
+        rv_wrong_action = self.client.post('/id/%d/%s/%s' % (id_, action, signed))
+        self.assertEqual(rv_wrong_action.status_code, 404)
+
+        # Delete comment
+        action = "delete"
+        rv_deleted = self.client.post('/id/%d/%s/%s' % (id_, action, signed))
+        self.assertEqual(rv_deleted.status_code, 200)
+        self.assertEqual(rv_deleted.data, b"Comment has been deleted")
+
+        # Comment should no longer exist
+        self.assertEqual(self.app.db.comments.get(id_), None)
+
+
+class TestUnsubscribe(unittest.TestCase):
+
+    def setUp(self):
+        fd, self.path = tempfile.mkstemp()
+        conf = config.load(config.default_file())
+        conf.set("general", "dbpath", self.path)
+        conf.set("moderation", "enabled", "true")
+        conf.set("guard", "enabled", "off")
+        conf.set("hash", "algorithm", "none")
+
+        class App(Isso, core.Mixin):
+            pass
+
+        self.app = App(conf)
+        self.app.wsgi_app = FakeIP(self.app.wsgi_app, "192.168.1.1")
+        self.client = JSONClient(self.app, Response)
+
+        # add default comment
+        rv = self.client.post(
+            '/new?uri=test', data=json.dumps({"text": "..."}))
+        self.assertEqual(rv.status_code, 202)
+
+    def tearDown(self):
+        os.unlink(self.path)
+
+    def testUnsubscribe(self):
+        id_ = 1
+        email = "test@test.example"
+        key = self.app.sign(('unsubscribe', email))
+
+        # GET should return some html form
+        rv_unsubscribe_get = self.client.get('/id/%d/unsubscribe/%s/%s' % (id_, email, key))
+        self.assertEqual(rv_unsubscribe_get.status_code, 200)
+        self.assertIn(b"Successfully unsubscribed", rv_unsubscribe_get.data)
+
+        # Incomplete key should fail
+        key = self.app.sign(['unsubscribe'])
+        rv_incomplete_key = self.client.get('/id/%d/unsubscribe/%s/%s' % (id_, email, key))
+        self.assertEqual(rv_incomplete_key.status_code, 403)
+
+        # Wrong key type should fail
+        key = self.app.sign(1)
+        rv_wrong_key_type = self.client.get('/id/%d/unsubscribe/%s/%s' % (id_, email, key))
+        self.assertEqual(rv_wrong_key_type.status_code, 403)
+
 
 class TestPurgeComments(unittest.TestCase):
 
     def setUp(self):
         fd, self.path = tempfile.mkstemp()
-        conf = config.load(
-            pkg_resources.resource_filename('isso', 'defaults.ini'))
+        conf = config.load(config.default_file())
         conf.set("general", "dbpath", self.path)
         conf.set("moderation", "enabled", "true")
         conf.set("guard", "enabled", "off")

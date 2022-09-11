@@ -1,26 +1,30 @@
-define(["app/api", "app/dom", "app/i18n"], function(api, $, i18n) {
-    return function() {
+var api = require("app/api");
+var $ = require("app/dom");
+var i18n = require("app/i18n");
 
-        var objs = {};
+module.exports = function () {
 
-        $.each("a", function(el) {
-            if (! el.href.match || ! el.href.match(/#isso-thread$/)) {
-                return;
-            }
+    var objs = {};
 
-            var tid = el.getAttribute("data-isso-id") ||
-                      el.href.match(/^(.+)#isso-thread$/)[1]
-                             .replace(/^.*\/\/[^\/]+/, '');
+    $.each("a", function(el) {
+        if (! el.href.match || ! el.href.match(/#isso-thread$/)) {
+            return;
+        }
 
-            if (tid in objs) {
-                objs[tid].push(el);
-            } else {
-                objs[tid] = [el];
-            }
-        });
+        var tid = el.getAttribute("data-isso-id") ||
+                  el.href.match(/^(.+)#isso-thread$/)[1]
+                         .replace(/^.*\/\/[^\/]+/, '');
 
-        var urls = Object.keys(objs);
+        if (tid in objs) {
+            objs[tid].push(el);
+        } else {
+            objs[tid] = [el];
+        }
+    });
 
+    var urls = Object.keys(objs);
+
+    if (urls.length > 0) {
         api.count(urls).then(function(rv) {
             for (var key in objs) {
                 if (objs.hasOwnProperty(key)) {
@@ -33,5 +37,5 @@ define(["app/api", "app/dom", "app/i18n"], function(api, $, i18n) {
                 }
             }
         });
-    };
-});
+    }
+};

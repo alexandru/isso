@@ -1,15 +1,16 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import unicode_literals
-
-import re
-import logging
 import datetime
+import logging
+import pkg_resources
+import re
 
 from email.utils import parseaddr, formataddr
 from configparser import ConfigParser, NoOptionError, NoSectionError, DuplicateSectionError
 
 logger = logging.getLogger("isso")
+
+default_config_file = pkg_resources.resource_filename('isso', 'isso.cfg')
 
 
 def timedelta(string):
@@ -78,9 +79,21 @@ class Section(object):
 class IssoParser(ConfigParser):
     """Parse INI-style configuration with some modifications for Isso.
 
-        * parse human-readable timedelta such as "15m" as "15 minutes"
-        * handle indented lines as "lists"
+        * Parse human-readable timedelta such as "15m" as "15 minutes"
+        * Handle indented lines as "lists"
+        * Disable string interpolation ('%s') for values
     """
+
+    def __init__(self, *args, **kwargs):
+        """Supply modified defaults to configparser.ConfigParser
+        https://docs.python.org/3.9/library/configparser.html#configparser.ConfigParser
+        allow_no_value=True: Allow empty config keys
+        interpolation=None:  Do not attempt to use python string interpolation on
+                             values. This is especially important for parsing
+                             passwords that might contain '%'
+        """
+        return super(IssoParser, self).__init__(
+            allow_no_value=True, interpolation=None, *args, **kwargs)
 
     def getint(self, section, key):
         try:
@@ -101,13 +114,20 @@ class IssoParser(ConfigParser):
             if item:
                 yield item
 
+    def set(self, section, key, value):
+        super(IssoParser, self).set(section, key, value)
+
     def section(self, section):
         return Section(self, section)
 
 
+def default_file():
+    return default_config_file
+
+
 def new(options=None):
 
-    cp = IssoParser(allow_no_value=True)
+    cp = IssoParser()
 
     if options:
         cp.read_dict(options)
@@ -133,11 +153,11 @@ def load(default, user=None):
             parser.read_file(f)
 
     for item in setify(parser).difference(a):
-        logger.warn("no such option: [%s] %s", *item)
+        logger.warning("no such option: [%s] %s", *item)
         if item in (("server", "host"), ("server", "port")):
-            logger.warn("use `listen = http://$host:$port` instead")
+            logger.warning("use `listen = http://$host:$port` instead")
         if item == ("smtp", "ssl"):
-            logger.warn("use `security = none | starttls | ssl` instead")
+            logger.warning("use `security = none | starttls | ssl` instead")
         if item == ("general", "session-key"):
             logger.info("Your `session-key` has been stored in the "
                         "database itself, this option is now unused")
@@ -153,5 +173,16 @@ def load(default, user=None):
     if not parseaddr(fromaddr)[0]:
         parser.set("smtp", "from",
                    formataddr(("Ich schrei sonst!", fromaddr)))
+
+    # Warn on trailing slash which can result in malformed double-slashed URLs
+    if parser.get("server", "public-endpoint").endswith("/"):
+        public_endpoint = parser.get("server", "public-endpoint")
+        logger.warn("In your config file, '[server] public-endpoint' has a slash at the end, "
+                    "please remove it: '%s' -> '%s'",
+                    public_endpoint, public_endpoint.rstrip("/"))
+        # XXX Actually fail here in a future version
+        logger.warn("A future version of Isso might quit with an error if 'public-endpoint' is set incorrectly")
+        # Remove trailing slash
+        parser.set("server", "public-endpoint", public_endpoint.rstrip("/"))
 
     return parser

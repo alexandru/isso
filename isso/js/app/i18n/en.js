@@ -1,8 +1,11 @@
-define({
+module.exports = {
     "postbox-text": "Type Comment Here (at least 3 chars)",
     "postbox-author": "Name (optional)",
+    "postbox-author-placeholder": "John Doe",
     "postbox-email": "E-mail (optional)",
+    "postbox-email-placeholder": "johndoe@example.com",
     "postbox-website": "Website (optional)",
+    "postbox-website-placeholder": "https://example.com",
     "postbox-preview": "Preview",
     "postbox-edit": "Edit",
     "postbox-submit": "Submit",
@@ -23,6 +26,7 @@ define({
     "comment-queued": "Comment in queue for moderation.",
     "comment-anonymous": "Anonymous",
     "comment-hidden": "{{ n }} Hidden",
+    "comment-page-author-suffix": "Author",
 
     "date-now": "right now",
     "date-minute": "a minute ago\n{{ n }} minutes ago",
@@ -31,4 +35,4 @@ define({
     "date-week": "last week\n{{ n }} weeks ago",
     "date-month": "last month\n{{ n }} months ago",
     "date-year": "last year\n{{ n }} years ago"
-});
+};

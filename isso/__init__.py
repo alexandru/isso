@@ -25,8 +25,6 @@
 #
 # Isso – a lightweight Disqus alternative
 
-from __future__ import print_function, unicode_literals
-
 import pkg_resources
 dist = pkg_resources.get_distribution("isso")
 
@@ -45,7 +43,7 @@ import errno
 import logging
 import tempfile
 
-from os.path import dirname, join
+from os.path import abspath, dirname, exists, join
 from argparse import ArgumentParser
 from functools import partial, reduce
 
@@ -66,7 +64,7 @@ local_manager = LocalManager([local])
 from isso import config, db, migrate, wsgi, ext, views
 from isso.core import ThreadedMixin, ProcessMixin, uWSGIMixin
 from isso.wsgi import origin, urlsplit
-from isso.utils import http, JSONRequest, html, hash
+from isso.utils import http, JSONRequest, JSONResponse, html, hash
 from isso.views import comments
 
 from isso.ext.notifications import Stdout, SMTP
@@ -77,6 +75,14 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s: %(message)s")
 
 logger = logging.getLogger("isso")
+
+
+def error_handler(env, request, error):
+    if request.accept_mimetypes.best == "application/json":
+        data = {'message': str(error)}
+        code = 500 if error.code is None else error.code
+        return JSONResponse(data, code)
+    return error
 
 
 class ProxyFixCustom(ProxyFix):
@@ -108,7 +114,7 @@ class Isso(object):
             elif backend in ("smtp", "SMTP"):
                 smtp_backend = True
             else:
-                logger.warn("unknown notification backend '%s'", backend)
+                logger.warning("unknown notification backend '%s'", backend)
         if smtp_backend or conf.getboolean("general", "reply-notifications"):
             subscribers.append(SMTP(self))
 
@@ -117,7 +123,6 @@ class Isso(object):
         self.urls = Map()
 
         views.Info(self)
-        views.Metrics(self)
         comments.API(self, self.hasher)
 
     def render(self, text):
@@ -141,16 +146,16 @@ class Isso(object):
         try:
             handler, values = adapter.match()
         except HTTPException as e:
-            return e
+            return error_handler(request.environ, request, e)
         else:
             try:
                 response = handler(request.environ, request, **values)
             except HTTPException as e:
-                return e
+                return error_handler(request.environ, request, e)
             except Exception:
                 logger.exception("%s %s", request.method,
                                  request.environ["PATH_INFO"])
-                return InternalServerError()
+                return error_handler(request.environ, request, InternalServerError())
             else:
                 return response
 
@@ -179,6 +184,13 @@ def make_app(conf=None, threading=True, multiprocessing=False, uwsgi=False):
 
     isso = App(conf)
 
+    logger.info("Using database at '%s'",
+                abspath(isso.conf.get('general', 'dbpath')))
+
+    if not any(conf.getiter("general", "host")):
+        logger.error("No website(s) configured, Isso won't work.")
+        sys.exit(1)
+
     # check HTTP server connection
     for host in conf.getiter("general", "host"):
         with http.curl('HEAD', host, '/', 5) as resp:
@@ -186,9 +198,9 @@ def make_app(conf=None, threading=True, multiprocessing=False, uwsgi=False):
                 logger.info("connected to %s", host)
                 break
     else:
-        logger.warn("unable to connect to your website, Isso will probably not "
-                    "work correctly. Please make sure, Isso can reach your "
-                    "website via HTTP(S).")
+        logger.warning("unable to connect to your website, Isso will probably not "
+                       "work correctly. Please make sure, Isso can reach your "
+                       "website via HTTP(S).")
 
     wrapper = [local_manager.make_middleware]
 
@@ -220,8 +232,8 @@ def main():
 
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + dist.version)
-    parser.add_argument("-c", dest="conf", default="/etc/isso.conf",
-                        metavar="/etc/isso.conf", help="set configuration file")
+    parser.add_argument("-c", dest="conf", default="/etc/isso.cfg",
+                        metavar="/etc/isso.cfg", help="set configuration file")
 
     imprt = subparser.add_parser('import', help="import Disqus XML export")
     imprt.add_argument("dump", metavar="FILE")
@@ -236,8 +248,21 @@ def main():
     subparser.add_parser("run", help="run server")
 
     args = parser.parse_args()
-    conf = config.load(
-        pkg_resources.resource_filename('isso', 'defaults.ini'), args.conf)
+
+    # ISSO_SETTINGS env var takes precedence over `-c` flag
+    conf_file = os.environ.get('ISSO_SETTINGS') or args.conf
+
+    if not conf_file:
+        logger.error("No configuration file specified! Exiting.")
+        sys.exit(1)
+    if exists(conf_file):
+        logger.info("Using configuration file '%s'", abspath(conf_file))
+    else:
+        logger.error("Specified config '%s' does not exist! Exiting.",
+                     abspath(conf_file))
+        sys.exit(1)
+
+    conf = config.load(config.default_file(), conf_file)
 
     if args.command == "import":
         conf.set("guard", "enabled", "off")
@@ -261,10 +286,6 @@ def main():
 
         logger.propagate = False
         logging.getLogger("werkzeug").propagate = False
-
-    if not any(conf.getiter("general", "host")):
-        logger.error("No website(s) configured, Isso won't work.")
-        sys.exit(1)
 
     if conf.get("server", "listen").startswith("http://"):
         host, port, _ = urlsplit(conf.get("server", "listen"))

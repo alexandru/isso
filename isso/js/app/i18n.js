@@ -1,144 +1,182 @@
-define(["app/config", "app/i18n/bg", "app/i18n/cs", "app/i18n/da",
-        "app/i18n/de", "app/i18n/en", "app/i18n/fa", "app/i18n/fi",
-        "app/i18n/fr", "app/i18n/hr",  "app/i18n/hu", "app/i18n/ru", "app/i18n/it", "app/i18n/ko",
-        "app/i18n/eo", "app/i18n/oc", "app/i18n/pl", "app/i18n/pt_BR", "app/i18n/pt_PT", "app/i18n/sk", "app/i18n/sv", "app/i18n/nl", "app/i18n/el_GR",
-        "app/i18n/es", "app/i18n/vi", "app/i18n/zh_CN", "app/i18n/zh_CN", "app/i18n/zh_TW"],
-        function(config, bg, cs, da, de, en, fa, fi, fr, hr, hu, ru, it, ko, eo, oc, pl, pt_BR, pt_PT, sk, sv, nl, el, es, vi, zh, zh_CN, zh_TW) {
+"use strict";
 
-    "use strict";
+var config = require("app/config");
 
-    var pluralforms = function(lang) {
-        switch (lang) {
-        case "bg":
-        case "cs":
-        case "da":
-        case "de":
-        case "el":
-        case "en":
-        case "es":
-        case "eo":
-        case "fa":
-        case "fi":
-        case "hr":
-        case "hu":
-        case "it":
-        case "ko":
-        case "pt_BR":
-        case "pt_PT":
-        case "sv":
-        case "nl":
-        case "vi":
-        case "zh":
-        case "zh_CN":
-        case "zh_TW":
-            return function(msgs, n) {
-                return msgs[n === 1 ? 0 : 1];
-            };
-        case "fr":
-            return function(msgs, n) {
-                return msgs[n > 1 ? 1 : 0];
-            };
-        case "ru":
-            return function(msgs, n) {
-                if (n % 10 === 1 && n % 100 !== 11) {
-                    return msgs[0];
-                } else if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) {
-                    return msgs[1];
-                } else {
-                    return typeof msgs[2] !== "undefined" ? msgs[2] : msgs[1];
-                }
-            };
-        case "oc":
-            return function(msgs, n) {
-                return msgs[n > 1 ? 1 : 0];
-            };
-        case "pl":
-            return function(msgs, n) {
-                if (n === 1) {
-                    return msgs[0];
-                } else if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) {
-                    return msgs[1];
-                } else {
-                    return typeof msgs[2] !== "undefined" ? msgs[2] : msgs[1];
-                }
-            };
-        case "sk":
-            return function(msgs, n) {
-                if (n === 1) {
-                    return msgs[0];
-                } else if (n === 2 || n === 3 || n === 4) {
-                    return msgs[1];
-                } else {
-                    return typeof msgs[2] !== "undefined" ? msgs[2] : msgs[1];
-                }
-            };
-        default:
-            return null;
-        }
-    };
+var catalogue = {
+    bg:      require("app/i18n/bg"),
+    cs:      require("app/i18n/cs"),
+    da:      require("app/i18n/da"),
+    de:      require("app/i18n/de"),
+    en:      require("app/i18n/en"),
+    el:      require("app/i18n/el_GR"),
+    eo:      require("app/i18n/eo"),
+    es:      require("app/i18n/es"),
+    fa:      require("app/i18n/fa"),
+    fi:      require("app/i18n/fi"),
+    fr:      require("app/i18n/fr"),
+    hr:      require("app/i18n/hr"),
+    hu:      require("app/i18n/hu"),
+    it:      require("app/i18n/it"),
+    ko:      require("app/i18n/ko"),
+    nl:      require("app/i18n/nl"),
+    oc:      require("app/i18n/oc"),
+    pl:      require("app/i18n/pl"),
+    pt:      require("app/i18n/pt_BR"),
+    "pt-BR": require("app/i18n/pt_BR"),
+    "pt-PT": require("app/i18n/pt_PT"),
+    ru:      require("app/i18n/ru"),
+    sk:      require("app/i18n/sk"),
+    sv:      require("app/i18n/sv"),
+    tr:      require("app/i18n/tr"),
+    uk:      require("app/i18n/uk"),
+    vi:      require("app/i18n/vi"),
+    zh:      require("app/i18n/zh_CN"),
+    "zh-CN": require("app/i18n/zh_CN"),
+    "zh-TW": require("app/i18n/zh_TW"),
+};
 
-    // useragent's prefered language (or manually overridden)
-    var lang = config.lang;
+var pluralforms = function(lang) {
+    // we currently only need to look at the primary language
+    // subtag.
+    switch (lang.split("-", 1)[0]) {
+    case "bg":
+    case "cs":
+    case "da":
+    case "de":
+    case "el":
+    case "en":
+    case "eo":
+    case "es":
+    case "fa":
+    case "fi":
+    case "hr":
+    case "hu":
+    case "it":
+    case "ko":
+    case "nl":
+    case "pt":
+    case "sv":
+    case "tr":
+    case "vi":
+    case "zh":
+        return function(msgs, n) {
+            return msgs[n === 1 ? 0 : 1];
+        };
+    case "fr":
+    case "oc":
+        return function(msgs, n) {
+            return msgs[n > 1 ? 1 : 0];
+        };
+    case "ru":
+    case "uk":
+        return function(msgs, n) {
+            if (n % 10 === 1 && n % 100 !== 11) {
+                return msgs[0];
+            } else if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) {
+                return msgs[1];
+            } else {
+                return typeof msgs[2] !== "undefined" ? msgs[2] : msgs[1];
+            }
+        };
+    case "pl":
+        return function(msgs, n) {
+            if (n === 1) {
+                return msgs[0];
+            } else if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) {
+                return msgs[1];
+            } else {
+                return typeof msgs[2] !== "undefined" ? msgs[2] : msgs[1];
+            }
+        };
+    case "sk":
+        return function(msgs, n) {
+            if (n === 1) {
+                return msgs[0];
+            } else if (n === 2 || n === 3 || n === 4) {
+                return msgs[1];
+            } else {
+                return typeof msgs[2] !== "undefined" ? msgs[2] : msgs[1];
+            }
+        };
+    default:
+        return null;
+    }
+};
 
-    // fall back to English
-    if (! pluralforms(lang)) {
-        lang = "en";
+// for each entry in config.langs, see whether we have a catalogue
+// entry and a pluralforms entry for it.  if we don't, try chopping
+// off everything but the primary language subtag, before moving
+// on to the next one.
+var lang, plural, translations;
+for (var i = 0; i < config.langs.length; i++) {
+    lang = config.langs[i];
+    plural = pluralforms(lang);
+    translations = catalogue[lang];
+    if (plural && translations)
+        break;
+    if (/-/.test(lang)) {
+        lang = lang.split("-", 1)[0];
+        plural = pluralforms(lang);
+        translations = catalogue[lang];
+        if (plural && translations)
+            break;
+    }
+}
+
+// absolute backstop; if we get here there's a bug in config.js
+if (!plural || !translations) {
+    lang = "en";
+    plural = pluralforms(lang);
+    translations = catalogue[lang];
+}
+
+var translate = function(msgid) {
+    return config[msgid + '-text-' + lang] ||
+      translations[msgid] ||
+      en[msgid] ||
+      "[?" + msgid + "]";
+};
+
+var pluralize = function(msgid, n) {
+    var msg;
+
+    msg = translate(msgid);
+    if (msg.indexOf("\n") > -1) {
+        msg = plural(msg.split("\n"), (+ n));
     }
 
-    var catalogue = {
-        bg: bg,
-        cs: cs,
-        da: da,
-        de: de,
-        el: el,
-        en: en,
-        eo: eo,
-        es: es,
-        fa: fa,
-        fi: fi,
-        fr: fr,
-        it: it,
-        ko: ko,
-        hr: hr,
-        hu: hu,
-        oc: oc,
-        pl: pl,
-        pt: pt_BR,
-        pt_BR: pt_BR,
-        pt_PT: pt_PT,
-        ru: ru,
-        sk: sk,
-        sv: sv,
-        nl: nl,
-        vi: vi,
-        zh: zh_CN,
-        zh_CN: zh_CN,
-        zh_TW: zh_TW
-    };
+    return msg ? msg.replace("{{ n }}", (+ n)) : msg;
+};
 
-    var plural = pluralforms(lang);
+var ago = function(localTime, date) {
 
-    var translate = function(msgid) {
-        return config[msgid + '-text-' + lang] ||
-          catalogue[lang][msgid] ||
-          en[msgid] ||
-          "???";
-    };
+    var secs = ((localTime.getTime() - date.getTime()) / 1000);
 
-    var pluralize = function(msgid, n) {
-        var msg;
+    if (isNaN(secs) || secs < 0 ) {
+        secs = 0;
+    }
 
-        msg = translate(msgid);
-        if (msg.indexOf("\n") > -1) {
-            msg = plural(msg.split("\n"), (+ n));
-        }
+    var mins = Math.floor(secs / 60), hours = Math.floor(mins / 60),
+        days = Math.floor(hours / 24);
 
-        return msg ? msg.replace("{{ n }}", (+ n)) : msg;
-    };
+    return secs  <=  45 && translate("date-now")  ||
+           secs  <=  90 && pluralize("date-minute", 1) ||
+           mins  <=  45 && pluralize("date-minute", mins) ||
+           mins  <=  90 && pluralize("date-hour", 1) ||
+           hours <=  22 && pluralize("date-hour", hours) ||
+           hours <=  36 && pluralize("date-day", 1) ||
+           days  <=   5 && pluralize("date-day", days) ||
+           days  <=   8 && pluralize("date-week", 1) ||
+           days  <=  21 && pluralize("date-week", Math.floor(days / 7)) ||
+           days  <=  45 && pluralize("date-month", 1) ||
+           days  <= 345 && pluralize("date-month", Math.floor(days / 30)) ||
+           days  <= 547 && pluralize("date-year", 1) ||
+                           pluralize("date-year", Math.floor(days / 365.25));
+};
 
-    return {
-        lang: lang,
-        translate: translate,
-        pluralize: pluralize
-    };
-});
+module.exports = {
+    ago: ago,
+    lang: lang,
+    translate: translate,
+    pluralize: pluralize,
+};

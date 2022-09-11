@@ -2,12 +2,9 @@
 
 import socket
 
-try:
-    import httplib
-    from urlparse import urlparse
-except ImportError:
-    import http.client as httplib
-    from urllib.parse import urlparse
+import http.client as httplib
+
+from urllib.parse import urlparse
 
 from isso import dist
 from isso.wsgi import urlsplit
@@ -27,7 +24,7 @@ class curl(object):
     """
 
     headers = {
-        "User-Agent": "Isso/{0} (+https://posativ.org/isso)".format(dist.version)
+        "User-Agent": "Isso/{0} (+https://isso-comments.de)".format(dist.version)
     }
 
     def __init__(self, method, host, path, timeout=3):

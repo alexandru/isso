@@ -1,9 +1,8 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import unicode_literals
-
-import unittest
 import tempfile
+import unittest
+
 from os.path import join, dirname
 
 from isso import config
@@ -21,16 +20,43 @@ conf = config.new({
 
 class TestMigration(unittest.TestCase):
 
-    def test_disqus(self):
+    def test_disqus_empty_id(self):
+        """
+        Fails with empty thread id
+        """
 
         xml = join(dirname(__file__), "disqus.xml")
         xxx = tempfile.NamedTemporaryFile()
 
         db = SQLite3(xxx.name, conf)
-        Disqus(db, xml).migrate()
+        Disqus(db, xml, empty_id=False).migrate()
+
+        # TODO: Convert unittest testcases with assertX to plain pytest
+        # asserts, allowing capturing of stdout, like this:
+        #
+        # def test_disqus_empty_id(self, capfd):
+        # [...]
+        # out, err = capfd.readouterr()
+        # assert out == \
+        #     "Isso couldn't import any thread, try again with --empty-id\n"
 
         self.assertEqual(
-            len(db.execute("SELECT id FROM comments").fetchall()), 2)
+            len(db.execute("SELECT id FROM comments").fetchall()), 0)
+
+    def test_disqus_empty_id_workaround(self):
+        """
+        Simulate supplying --empty_id to import call to work around empty
+        thread ids
+        """
+
+        xml = join(dirname(__file__), "disqus.xml")
+        xxx = tempfile.NamedTemporaryFile()
+
+        db = SQLite3(xxx.name, conf)
+        Disqus(db, xml, empty_id=True).migrate()
+
+        self.assertEqual(
+            len(db.execute("SELECT id FROM comments").fetchall()), 3)
 
         self.assertEqual(db.threads["/"]["title"], "Hello, World!")
         self.assertEqual(db.threads["/"]["id"], 1)
@@ -61,7 +87,7 @@ class TestMigration(unittest.TestCase):
         self.assertEqual(
             len(db.execute("SELECT id FROM threads").fetchall()), 2)
         self.assertEqual(
-            len(db.execute("SELECT id FROM comments").fetchall()), 7)
+            len(db.execute("SELECT id FROM comments").fetchall()), 8)
 
         first = db.comments.get(1)
         self.assertEqual(first["author"], "Ohai")
@@ -75,7 +101,11 @@ class TestMigration(unittest.TestCase):
         for i in (3, 4, 5):
             self.assertEqual(db.comments.get(i)["parent"], second["id"])
 
-        last = db.comments.get(6)
+        # Ensure newlines in wordpress translate to two newlines in isso, to render the same
+        multiline = db.comments.get(6)
+        self.assertIn("multiple lines:  \nWordPress", multiline["text"])
+
+        last = db.comments.get(7)
         self.assertEqual(last["author"], "Letzter :/")
         self.assertEqual(last["parent"], None)
 

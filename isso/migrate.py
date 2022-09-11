@@ -1,7 +1,5 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import division, print_function, unicode_literals
-
 import functools
 import io
 import json
@@ -11,22 +9,12 @@ import re
 import sys
 import textwrap
 
-from time import mktime, strptime, time
 from collections import defaultdict
+from time import mktime, strptime, time
+from urllib.parse import urlparse
+from xml.etree import ElementTree
 
 from isso.utils import anonymize
-
-try:
-    input = raw_input
-except NameError:
-    pass
-
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
-from xml.etree import ElementTree
 
 logger = logging.getLogger("isso")
 
@@ -65,6 +53,7 @@ class Progress(object):
 
 
 class Disqus(object):
+    # Format documented at https://help.disqus.com/en/articles/1717164-comments-export
 
     ns = '{http://disqus.com}'
     internals = '{http://disqus.com/disqus-internals}'
@@ -83,8 +72,8 @@ class Disqus(object):
         remap = dict()
 
         if path not in self.db.threads:
-            self.db.threads.new(path, thread.find(
-                Disqus.ns + 'title').text.strip())
+            thread_title = thread.find(Disqus.ns + 'title').text or ''
+            self.db.threads.new(path, thread_title.strip())
 
         for item in sorted(posts, key=lambda k: k['created']):
 
@@ -124,10 +113,15 @@ class Disqus(object):
 
         progress = Progress(len(tree.findall(Disqus.ns + 'thread')))
         for i, thread in enumerate(tree.findall(Disqus.ns + 'thread')):
-            progress.update(i, thread.find(Disqus.ns + 'id').text)
+            # Workaround for not crashing with empty thread ids:
+            thread_id = thread.find(Disqus.ns + 'id')
+            if not thread_id:
+                thread_id = dict(text="<empty thread id>", empty=True)
+
+            progress.update(i, thread_id.get('text'))
 
             # skip (possibly?) duplicate, but empty thread elements
-            if thread.find(Disqus.ns + 'id').text is None and not self.empty_id:
+            if thread_id.get('empty') and not self.empty_id:
                 continue
 
             id = thread.attrib.get(Disqus.internals + 'id')
@@ -176,7 +170,7 @@ class WordPress(object):
                 self.ns = WordPress.ns.replace("1.0", m.group(1))
                 break
         else:
-            logger.warn("No WXR namespace found, assuming 1.0")
+            logger.warning("No WXR namespace found, assuming 1.0")
 
     def insert(self, thread):
 
@@ -232,9 +226,18 @@ class WordPress(object):
         progress.finish("{0} threads, {1} comments".format(
             len(items) - skip, self.count))
 
+    def _process_comment_content(self, text):
+        # WordPress comment text renders a single newline between two blocks of
+        # text as a <br> tag, so add an explicit Markdown line break on import
+        # (Otherwise multiple blocks of text separated by single newlines are
+        # all shown as one long line.)
+        text = re.sub(r'(?!^\n)\n(?!^\n)', '  \n', text, 0)
+
+        return strip(text)
+
     def Comment(self, el):
         return {
-            "text": strip(el.find(self.ns + "comment_content").text),
+            "text": self._process_comment_content(el.find(self.ns + "comment_content").text),
             "author": strip(el.find(self.ns + "comment_author").text),
             "email": strip(el.find(self.ns + "comment_author_email").text),
             "website": strip(el.find(self.ns + "comment_author_url").text),

@@ -1,8 +1,7 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import division, unicode_literals
-
 import hashlib
+import ipaddress
 import json
 import os
 
@@ -13,11 +12,6 @@ from werkzeug.exceptions import BadRequest
 
 from isso.wsgi import Request
 
-try:
-    import ipaddress
-except ImportError:
-    import ipaddr as ipaddress
-
 
 def anonymize(remote_addr):
     """
@@ -25,7 +19,7 @@ def anonymize(remote_addr):
     and /48 (zero'd).
 
     """
-    if not isinstance(remote_addr, str) and isinstance(remote_addr, str):
+    if isinstance(remote_addr, bytes):
         remote_addr = remote_addr.decode('ascii', 'ignore')
     try:
         ipv4 = ipaddress.IPv4Address(remote_addr)

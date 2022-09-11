@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+
+{%- set render_sidebar = (not embedded) and (not theme_nosidebar|tobool) and
+                         (sidebars != []) %}
+
+{%- macro sidebar() %}
+      {%- if render_sidebar %}
+          {%- if sidebars != None %}
+          <div role="navigation" class="sidebar">
+            {%- for sidebartemplate in sidebars %}
+            {%- include sidebartemplate %}
+            {%- endfor %}
+          </div>
+          {%- endif %}
+      {%- endif %}
+{%- endmacro %}
+
+{%- macro script() %}
+    {%- for js in script_files %}
+    {{ js_tag(js) }}
+    {%- endfor %}
+{%- endmacro %}
+
+{%- macro css() %}
+    {%- for css in css_files %}
+      {%- if css|attr("filename") %}
+    {{ css_tag(css) }}
+      {%- else %}
+    <link rel="stylesheet" href="{{ pathto(css, 1)|e }}" type="text/css" />
+      {%- endif %}
+    {%- endfor %}
+{%- endmacro %}
+
+{%- macro vcs_edit_link() %}
+{%- if hasdoc(pagename) and display_github %}
+<div class="vcs-edit-container">
+<a href="https://{{ github_host|default("github.com") }}/{{ github_user }}/{{ github_repo }}/{{ theme_vcs_pageview_mode or "blob" }}/{{ github_version }}{{ conf_py_path }}{{ pagename }}{{ page_source_suffix or ".html" }}" class="vcs-edit"><img src="{{ pathto('_static/github.svg', 1) }}" /> Edit on GitHub</a>
+</div>
+{%- endif %}
+{%- endmacro %}
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    {{ metatags }}
+    {%- block htmltitle %}
+    <title>{{ title|striptags|e }}</title>
+    {%- endblock %}
+    {%- block extrahead %} {% endblock %}
+    {%- block css %}
+    {{- css() }}
+    {%- endblock %}
+    {%- if not embedded %}
+    {{ script() }}
+    {%- if use_opensearch %}
+    <link rel="search" type="application/opensearchdescription+xml"
+          title="{% trans docstitle=docstitle|e %}Search within {{ docstitle }}{% endtrans %}"
+          href="{{ pathto('_static/opensearch.xml', 1) }}"/>
+    {%- endif %}
+    {%- if favicon %}
+    <link rel="shortcut icon" href="{{ pathto('_static/' + favicon, 1) }}"/>
+    {%- endif %}
+    {%- endif %}
+{%- block linktags %}
+    {%- if hasdoc('search') %}
+    <link rel="search" title="{{ _('Search') }}" href="{{ pathto('search') }}" />
+    {%- endif %}
+    <link rel="top" title="{{ docstitle|e }}" href="{{ pathto('index') }}" />
+    {%- if parents %}
+    <link rel="up" title="{{ parents[-1].title|striptags|e }}" href="{{ parents[-1].link|e }}" />
+    {%- endif %}
+    {%- if next %}
+    <link rel="next" title="{{ next.title|striptags|e }}" href="{{ next.link|e }}" />
+    {%- endif %}
+    {%- if prev %}
+    <link rel="prev" title="{{ prev.title|striptags|e }}" href="{{ prev.link|e }}" />
+    {%- endif %}
+{%- endblock %}
+</head>
+<body>
+    <div class="wrapper">
+        <div class="header">
+            <header>
+                <img class="logo" src="{{ pathto('_static/isso.svg', 1) }}" alt="Wynaut by @veekun"/>
+                <div class="title">
+                    <a href="{{ pathto(".") }}">
+                        <h1>Isso</h1>
+                        <h2>a commenting server similar to Disqus</h2>
+                    </a>
+                </div>
+            </header>
+            <nav>
+                <a href="{{ pathto('docs') }}">Documentation</a>
+                <a href="{{ pathto('docs/contributing') }}">Contribute</a>
+                <a href="{{ pathto('community') }}">community</a>
+            </nav>
+        </div>
+
+        <div class="outer">
+            {% block header %} {% endblock %}
+        </div>
+
+
+        <main>
+        {% block main %}
+            {{ sidebar() }}
+
+            <div class="docs">
+                {{ vcs_edit_link() }}
+
+                <div role="main">
+                {% block body %}
+                {{ body }}
+                {% endblock %}
+                </div>
+            </div>
+        {% endblock %}
+        </main>
+
+        <div class="push"></div>
+    </div>
+
+    <div class="outer footer">
+        {%- block footer %}
+        <footer>
+        &copy; Copyright {{ copyright }}.
+
+        {%- if last_updated %}
+            Last updated on {{ last_updated }}.
+        {%- endif %}
+
+        Made with <a href="http://sphinx-doc.org/">Sphinx</a>.
+        </footer>
+    </div>
+
+{%- endblock %}
+  </body>
+</html>
