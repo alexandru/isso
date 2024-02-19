@@ -7,11 +7,9 @@ Changelog for Isso
 New Features
 ^^^^^^^^^^^^
 
-- notifications: Implement 'List-Unsubscribe' header (`#906`_, ix5)
-- css: Grey styling for comment code, code blocks (`#907`_, ix5)
+- Add Catalan localisation (`#966`_, welpo)
 
-.. _#906: https://github.com/posativ/isso/pull/906
-.. _#907: https://github.com/posativ/isso/pull/907
+.. _#966: https://github.com/posativ/isso/pull/966
 
 Breaking Changes
 ^^^^^^^^^^^^^^^^
@@ -21,8 +19,32 @@ Breaking Changes
 Bugfixes & Improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+- Changed website validation to allow domain names containing umlauts (`#951`_, schneidr)
+- Improve Spanish translation (`#967`_, welpo)
+- Make language code handling more robust (`#983`_, ix5)
+
+.. _#951: https://github.com/posativ/isso/pull/951
+.. _#967: https://github.com/posativ/isso/pull/967
+.. _#983: https://github.com/posativ/isso/pull/983
+
+0.13.1.dev0 (2023-02-05)
+------------------------
+
+New Features
+^^^^^^^^^^^^
+
+- notifications: Implement 'List-Unsubscribe' header (`#906`_, ix5)
+- css: Grey styling for comment code, code blocks (`#907`_, ix5)
+
+.. _#906: https://github.com/posativ/isso/pull/906
+.. _#907: https://github.com/posativ/isso/pull/907
+
+Bugfixes & Improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+
 - Python 3.11 support (`#832`_, l33tname)
 
+.. _#832: https://github.com/posativ/isso/pull/832
 
 0.13.0 (2022-06-12)
 -------------------
@@ -49,7 +71,7 @@ Breaking Changes
   This change necessitates adjusting custom CSS files to the new names.
 - Drop support for outdated Python version 3.5 (`#808`_, l33tname)
 - Strip trailing slash from ``public-endpoint``. A trailing slash in ``[server]
-  public-endpoint`` is now discouraged and throws a warning (`#876`_, ix5)
+  public-endpoint`` is now discouraged and throws a warning (`#877`_, ix5)
 
 Bugfixes & Improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,7 +104,7 @@ Bugfixes & Improvements
 .. _#846: https://github.com/posativ/isso/pull/846
 .. _#861: https://github.com/posativ/isso/pull/861
 .. _#865: https://github.com/posativ/isso/pull/865
-.. _#876: https://github.com/posativ/isso/pull/876
+.. _#877: https://github.com/posativ/isso/pull/877
 .. _#878: https://github.com/posativ/isso/pull/878
 .. _#879: https://github.com/posativ/isso/pull/879
 .. _#880: https://github.com/posativ/isso/pull/880
@@ -119,7 +141,7 @@ Breaking Changes
   This change necessitates adjusting custom CSS files to the new names.
 - Drop support for outdated Python version 3.5 (`#808`_, l33tname)
 - Strip trailing slash from ``public-endpoint``. A trailing slash in ``[server]
-  public-endpoint`` is now discouraged and throws a warning (`#876`_, ix5)
+  public-endpoint`` is now discouraged and throws a warning (`#877`_, ix5)
 
 Bugfixes & Improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -150,7 +172,7 @@ Bugfixes & Improvements
 .. _#846: https://github.com/posativ/isso/pull/846
 .. _#861: https://github.com/posativ/isso/pull/861
 .. _#865: https://github.com/posativ/isso/pull/865
-.. _#876: https://github.com/posativ/isso/pull/876
+.. _#877: https://github.com/posativ/isso/pull/877
 .. _#878: https://github.com/posativ/isso/pull/878
 .. _#879: https://github.com/posativ/isso/pull/879
 .. _#880: https://github.com/posativ/isso/pull/880
@@ -814,4 +836,3 @@ Minor improvements:
 ----------------
 
 - initial PyPi release
-

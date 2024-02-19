@@ -5,7 +5,7 @@ Update from upstream:
 ```
 git remote add upstream https://github.com/posativ/isso.git
 git fetch upstream
-git merge upstrea/master
+git merge upstream/master
 ```
 
 Build and publish Docker image:

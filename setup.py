@@ -14,7 +14,7 @@ long_description = re_sub(r"\n## License\n.*LICENSE.*\n", "", long_description)
 
 setup(
     name='isso',
-    version='0.13.1.dev0',
+    version='0.13.1.dev1',
     author='Martin Zimmermann',
     author_email='info@posativ.org',
     packages=find_packages(),
@@ -25,14 +25,13 @@ setup(
     description='lightweight Disqus alternative',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Internet",
         "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
